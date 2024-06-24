@@ -175,7 +175,7 @@ def detect_car(background_gray, test_image_path, show_images=False):
         row_three = np.hstack((image_contours, image_approx_contours))
         combined_image = np.vstack((row_one, row_two, row_three))
         cv2.imshow('Combined Image', combined_image)
-        cv2.imwrite("./threshold.jpeg", thresh_3d)
+        # cv2.imwrite("./threshold.jpeg", thresh_3d)
 
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -204,6 +204,6 @@ if __name__ == "__main__":
         raise ValueError("Lists must be of the same length")
         
     differences = sum(1 for a, b in zip(labels, predictions) if a != b)
-    false_negs = sum(1 for a,b in zip(labels, predictions) if a and not b)
+    false_negs = sum(1 for a, b in zip(labels, predictions) if a and not b)
     false_pos = differences - false_negs
     print = print(f"Incorrect: {differences}\nFalse Negatives: {false_negs}\nFalse Positives: {false_pos}\nScore: {100 * ((len(labels) - differences) / len(labels))}")
