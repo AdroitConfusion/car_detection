@@ -11,7 +11,7 @@ background_gray = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
 # back_sub.apply(background, learningRate=1)
 
 # List of test image paths
-# test_images = ['car_images/bg.jpg','car_images/no_detection_2024-05-13 18:48:21.832544..jpg', 'car_images/no_detection_2024-05-13 18:59:03.900086..jpg','car_images/no_detection_2024-05-13 19:09:18.262933..jpg']
+# test_images = ['car_images/no_detection_2024-05-13 18:48:21.832544..jpg']
 image_folder = 'car_images'
 test_images = [os.path.join(image_folder, f) for f in os.listdir(image_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
 
@@ -114,27 +114,32 @@ def detect_car(background_gray, test_image_path, show_images=False):
     cv2.drawContours(image_contours, contours, -1, (255, 0, 0), 3)
     cv2.drawContours(image_approx_contours, approx_contours, -1, (255, 0, 0), 3)
 
-    output_file_path = 'bounding_boxes.txt'
-    with open(output_file_path, 'a') as output_file:
-        # Function to check if a contour might be a car
-        def is_car_contour(contour):
-            
-            # Calculate the bounding rectangle for the contour
-            x, y, w, h = cv2.boundingRect(contour)
-            aspect_ratio = w / float(h)
+    
+    # Function to check if a contour might be a car
+    def is_car_contour(contour):
+        
+        # Calculate the bounding rectangle for the contour
+        x, y, w, h = cv2.boundingRect(contour)
+        aspect_ratio = w / float(h)
 
-            # Check extent
-            contour_area = cv2.contourArea(contour)
-            rect_area = w * h
-            extent = float(contour_area) / rect_area if rect_area > 0 else 0
-            
-            if 600000 < rect_area < (image_width * image_height - 10000) and 1 < aspect_ratio < 3 and 0.65 < extent:
-                # print(f"Contour Area: {contour_area}\nRect Area: {rect_area}")
-                return True
-            return False
+        # Check extent
+        contour_area = cv2.contourArea(contour)
+        rect_area = w * h
+        extent = float(contour_area) / rect_area if rect_area > 0 else 0
+        
+        if 600000 < rect_area < (image_width * image_height - 10000) and 1 < aspect_ratio < 3 and 0.65 < extent:
+            # print(f"Contour Area: {contour_area}\nRect Area: {rect_area}")
+            return True
+        return False
 
-        # Loop over the contours and check if they are likely to be cars
-        is_car = False
+    # Loop over the contours and check if they are likely to be cars
+    is_car = False
+
+    bounding_box_folder = 'bounding_boxes'
+    test_image_file_name = test_image_path.replace("car_images/", "")
+    test_image_file_name = test_image_file_name.replace(".jpg", ".txt")
+    bounding_box_file_path = os.path.join(bounding_box_folder, test_image_file_name)
+    with open(bounding_box_file_path, 'w') as bounding_box_file:
         for contour in approx_contours:
             if is_car_contour(contour):
                 x_min, y_min, bbox_width, bbox_height = cv2.boundingRect(contour)
@@ -142,11 +147,13 @@ def detect_car(background_gray, test_image_path, show_images=False):
                 y_max = y_min + bbox_height
 
                 x_center, y_center, width, height = convert_to_yolo_format(x_min, y_min, x_max, y_max, image_width, image_height)
+
                 # Write the coordinates to the file
-                output_file.write(f"0 {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
+                bounding_box_file.write(f"0 {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}")
+                    
                 cv2.rectangle(test_image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 5)
                 is_car = True
-                # break
+                break
 
    
     if show_images:
@@ -175,7 +182,7 @@ def detect_car(background_gray, test_image_path, show_images=False):
         row_three = np.hstack((image_contours, image_approx_contours))
         combined_image = np.vstack((row_one, row_two, row_three))
         cv2.imshow('Combined Image', combined_image)
-        cv2.imwrite("./threshold.jpeg", thresh_3d)
+        # cv2.imwrite("./threshold.jpeg", thresh_3d)
 
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -204,6 +211,6 @@ if __name__ == "__main__":
         raise ValueError("Lists must be of the same length")
         
     differences = sum(1 for a, b in zip(labels, predictions) if a != b)
-    false_negs = sum(1 for a,b in zip(labels, predictions) if a and not b)
+    false_negs = sum(1 for a, b in zip(labels, predictions) if a and not b)
     false_pos = differences - false_negs
     print = print(f"Incorrect: {differences}\nFalse Negatives: {false_negs}\nFalse Positives: {false_pos}\nScore: {100 * ((len(labels) - differences) / len(labels))}")
